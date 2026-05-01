@@ -1,0 +1,20 @@
+{
+  "name": "spacebot-game",
+  "version": "0.1.0",
+  "description": "Space Bot - 3D browser adventure game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "three": "^0.164.0",
+    "howler": "^2.2.4",
+    "@neondatabase/serverless": "^0.9.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}

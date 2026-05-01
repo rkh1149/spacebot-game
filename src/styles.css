@@ -1,0 +1,491 @@
+/* ===========================
+   Space Bot - Game Styles
+   =========================== */
+
+:root {
+  --color-bg-deep: #050818;
+  --color-bg: #0a0e27;
+  --color-bg-light: #141a3a;
+  --color-accent: #7fff7f;
+  --color-accent-dim: #3fbf3f;
+  --color-accent-glow: rgba(127, 255, 127, 0.5);
+  --color-warning: #ff6b6b;
+  --color-text: #e8edff;
+  --color-text-dim: #8a92b8;
+  --color-text-faint: #4a5278;
+  --font-display: 'Orbitron', 'Arial Black', sans-serif;
+  --font-body: 'Rajdhani', 'Helvetica', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg-deep);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ===========================
+   Loading Screen
+   =========================== */
+
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, var(--color-bg) 0%, var(--color-bg-deep) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loading-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.loading-logo {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 30px;
+  position: relative;
+}
+
+.logo-orbit {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  animation: orbit-spin 4s linear infinite;
+}
+
+.logo-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 40px var(--color-accent-glow), 0 0 80px var(--color-accent-glow);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.logo-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--color-accent-dim);
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 40px var(--color-accent-glow), 0 0 80px var(--color-accent-glow); }
+  50% { box-shadow: 0 0 60px var(--color-accent-glow), 0 0 120px var(--color-accent-glow); }
+}
+
+.loading-title {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: 0.4em;
+  margin-bottom: 8px;
+  background: linear-gradient(180deg, var(--color-text) 0%, var(--color-accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.loading-subtitle {
+  font-size: 1rem;
+  color: var(--color-text-dim);
+  letter-spacing: 0.3em;
+  margin-bottom: 40px;
+  text-transform: uppercase;
+}
+
+.loading-bar-container {
+  width: 300px;
+  height: 4px;
+  margin: 0 auto 16px;
+  background: var(--color-bg-light);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loading-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+  box-shadow: 0 0 12px var(--color-accent-glow);
+  transition: width 0.3s ease;
+}
+
+.loading-text {
+  font-size: 0.85rem;
+  color: var(--color-text-faint);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ===========================
+   Main Menu
+   =========================== */
+
+#main-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  overflow: hidden;
+}
+
+.menu-bg {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at top right, rgba(127, 255, 127, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom left, rgba(63, 127, 255, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%);
+}
+
+.menu-stars {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20% 30%, white, transparent),
+    radial-gradient(1px 1px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(2px 2px at 80% 10%, white, transparent),
+    radial-gradient(1px 1px at 90% 60%, white, transparent),
+    radial-gradient(1px 1px at 33% 80%, white, transparent),
+    radial-gradient(2px 2px at 15% 90%, var(--color-accent-dim), transparent);
+  background-size: 200% 200%;
+  opacity: 0.6;
+  animation: stars-drift 60s linear infinite;
+}
+
+@keyframes stars-drift {
+  from { background-position: 0% 0%; }
+  to { background-position: 100% 100%; }
+}
+
+.menu-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+}
+
+.menu-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 0.9;
+}
+
+.title-line-1, .title-line-2 {
+  display: block;
+}
+
+.title-line-1 {
+  font-size: 5rem;
+  letter-spacing: 0.3em;
+  color: var(--color-text);
+  text-shadow: 0 0 30px rgba(127, 255, 127, 0.3);
+  animation: title-glow 4s ease-in-out infinite;
+}
+
+.title-line-2 {
+  font-size: 7rem;
+  letter-spacing: 0.15em;
+  background: linear-gradient(180deg, var(--color-accent) 0%, var(--color-accent-dim) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 20px var(--color-accent-glow));
+}
+
+@keyframes title-glow {
+  0%, 100% { text-shadow: 0 0 30px rgba(127, 255, 127, 0.3); }
+  50% { text-shadow: 0 0 50px rgba(127, 255, 127, 0.6); }
+}
+
+.menu-tagline {
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+  letter-spacing: 0.15em;
+  margin-bottom: 60px;
+  text-transform: uppercase;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 280px;
+}
+
+.menu-button {
+  position: relative;
+  padding: 16px 32px;
+  background: rgba(20, 26, 58, 0.6);
+  border: 1px solid var(--color-text-faint);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.menu-button:hover {
+  border-color: var(--color-accent);
+  background: rgba(127, 255, 127, 0.1);
+  box-shadow: 0 0 20px rgba(127, 255, 127, 0.2);
+  transform: translateY(-2px);
+}
+
+.menu-button.primary {
+  border-color: var(--color-accent-dim);
+  background: rgba(127, 255, 127, 0.08);
+}
+
+.menu-button.primary:hover {
+  background: rgba(127, 255, 127, 0.15);
+  box-shadow: 0 0 30px rgba(127, 255, 127, 0.4);
+}
+
+.menu-button .btn-text {
+  position: relative;
+  z-index: 1;
+}
+
+.menu-version {
+  position: absolute;
+  bottom: 30px;
+  font-size: 0.8rem;
+  color: var(--color-text-faint);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ===========================
+   Game Canvas
+   =========================== */
+
+#game-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: none;
+}
+
+/* ===========================
+   HUD
+   =========================== */
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.hud-top-left, .hud-top-right {
+  position: absolute;
+  top: 30px;
+  display: flex;
+  gap: 12px;
+}
+
+.hud-top-left { left: 30px; }
+.hud-top-right { right: 30px; }
+
+.hud-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  background: rgba(10, 14, 39, 0.7);
+  border: 1px solid rgba(127, 255, 127, 0.3);
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.hud-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.hud-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.hud-stat-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--color-text-dim);
+  margin-bottom: 4px;
+}
+
+.hud-bar {
+  width: 160px;
+  height: 8px;
+  background: var(--color-bg-light);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.hud-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+  box-shadow: 0 0 10px var(--color-accent-glow);
+  transition: width 0.2s ease;
+}
+
+.hud-bar-fill.low {
+  background: linear-gradient(90deg, #cc4444, var(--color-warning));
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+}
+
+.hud-counter {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--color-accent);
+  letter-spacing: 0.05em;
+}
+
+.hud-counter-target {
+  color: var(--color-text-faint);
+  font-size: 1rem;
+}
+
+.hud-bottom-center {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.hud-message {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--color-accent);
+  text-shadow: 0 0 20px var(--color-accent-glow);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.hud-message.show {
+  opacity: 1;
+}
+
+.hud-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hud-crosshair svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 4px var(--color-accent-glow));
+}
+
+/* ===========================
+   Pause Menu
+   =========================== */
+
+#pause-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: rgba(5, 8, 24, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pause-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.pause-content h2 {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  color: var(--color-accent);
+  margin-bottom: 30px;
+  text-shadow: 0 0 30px var(--color-accent-glow);
+}
+
+.pause-content .menu-button {
+  min-width: 280px;
+}
+
+/* ===========================
+   Responsive
+   =========================== */
+
+@media (max-width: 768px) {
+  .title-line-1 { font-size: 3rem; }
+  .title-line-2 { font-size: 4.5rem; }
+  .menu-tagline { font-size: 0.9rem; }
+  .hud-top-left, .hud-top-right { top: 16px; }
+  .hud-top-left { left: 16px; }
+  .hud-top-right { right: 16px; }
+  .hud-bar { width: 100px; }
+}

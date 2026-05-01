@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0e27" />
+  <title>Space Bot — Cosmic Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <!-- Loading screen -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo">
+        <div class="logo-orbit">
+          <div class="logo-core"></div>
+          <div class="logo-ring"></div>
+        </div>
+      </div>
+      <h1 class="loading-title">SPACE BOT</h1>
+      <p class="loading-subtitle">Cosmic Adventure</p>
+      <div class="loading-bar-container">
+        <div id="loading-bar" class="loading-bar"></div>
+      </div>
+      <p id="loading-text" class="loading-text">Initializing systems...</p>
+    </div>
+  </div>
+
+  <!-- Main menu -->
+  <div id="main-menu" class="hidden">
+    <div class="menu-bg"></div>
+    <div class="menu-stars"></div>
+    <div class="menu-content">
+      <h1 class="menu-title">
+        <span class="title-line-1">SPACE</span>
+        <span class="title-line-2">BOT</span>
+      </h1>
+      <p class="menu-tagline">A cosmic adventure across three worlds</p>
+      <div class="menu-buttons">
+        <button id="btn-new-game" class="menu-button primary">
+          <span class="btn-text">NEW GAME</span>
+          <span class="btn-glow"></span>
+        </button>
+        <button id="btn-continue" class="menu-button">
+          <span class="btn-text">CONTINUE</span>
+        </button>
+        <button id="btn-settings" class="menu-button">
+          <span class="btn-text">SETTINGS</span>
+        </button>
+      </div>
+      <p class="menu-version">v0.1.0 • Tech Demo</p>
+    </div>
+  </div>
+
+  <!-- Game canvas (Three.js renders here) -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD overlay -->
+  <div id="hud" class="hidden">
+    <div class="hud-top-left">
+      <div class="hud-stat">
+        <div class="hud-icon laser-icon">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="hud-stat-content">
+          <div class="hud-stat-label">LASER</div>
+          <div class="hud-bar">
+            <div id="laser-bar" class="hud-bar-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-top-right">
+      <div class="hud-stat">
+        <div class="hud-icon battery-icon">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="7" width="16" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M19 10V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <rect x="6" y="10" width="8" height="4" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="hud-stat-content">
+          <div class="hud-stat-label">BATTERIES</div>
+          <div class="hud-counter"><span id="battery-count">0</span> <span class="hud-counter-target">/ 10</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-bottom-center">
+      <div id="hud-message" class="hud-message"></div>
+    </div>
+
+    <div class="hud-crosshair">
+      <svg viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r="2" fill="#7fff7f"/>
+        <line x1="16" y1="6" x2="16" y2="11" stroke="#7fff7f" stroke-width="1.5"/>
+        <line x1="16" y1="21" x2="16" y2="26" stroke="#7fff7f" stroke-width="1.5"/>
+        <line x1="6" y1="16" x2="11" y2="16" stroke="#7fff7f" stroke-width="1.5"/>
+        <line x1="21" y1="16" x2="26" y2="16" stroke="#7fff7f" stroke-width="1.5"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Pause menu -->
+  <div id="pause-menu" class="hidden">
+    <div class="pause-content">
+      <h2>PAUSED</h2>
+      <button id="btn-resume" class="menu-button primary"><span class="btn-text">RESUME</span></button>
+      <button id="btn-quit" class="menu-button"><span class="btn-text">QUIT TO MENU</span></button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
