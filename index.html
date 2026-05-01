@@ -29,11 +29,50 @@
     </div>
   </div>
 
+  <!-- Sign-in / profile screen (first launch or after sign-out) -->
+  <div id="signin-screen" class="hidden">
+    <div class="menu-bg"></div>
+    <div class="menu-stars"></div>
+    <div class="menu-content">
+      <div class="signin-card">
+        <div class="signin-icon">
+          <div class="signin-pulse"></div>
+          <svg viewBox="0 0 64 64" width="48" height="48">
+            <circle cx="32" cy="22" r="10" fill="none" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M14 54 Q14 38 32 38 Q50 38 50 54" fill="none" stroke="currentColor" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <h2 class="signin-title">PILOT REGISTRATION</h2>
+        <p class="signin-sub">Identify yourself to begin your mission</p>
+        <div class="signin-input-wrap">
+          <label class="signin-label" for="username-input">CALL SIGN</label>
+          <input
+            id="username-input"
+            type="text"
+            class="signin-input"
+            placeholder="Enter your name..."
+            maxlength="50"
+            autocomplete="off"
+          />
+        </div>
+        <button id="btn-signin-confirm" class="menu-button primary">
+          <span class="btn-text">BEGIN MISSION</span>
+        </button>
+        <p id="signin-status" class="signin-status"></p>
+      </div>
+    </div>
+  </div>
+
   <!-- Main menu -->
   <div id="main-menu" class="hidden">
     <div class="menu-bg"></div>
     <div class="menu-stars"></div>
     <div class="menu-content">
+      <div id="player-badge" class="player-badge">
+        <span class="badge-label">PILOT</span>
+        <span id="badge-name" class="badge-name">—</span>
+        <button id="btn-signout" class="badge-signout" title="Sign out">×</button>
+      </div>
       <h1 class="menu-title">
         <span class="title-line-1">SPACE</span>
         <span class="title-line-2">BOT</span>
@@ -42,16 +81,67 @@
       <div class="menu-buttons">
         <button id="btn-new-game" class="menu-button primary">
           <span class="btn-text">NEW GAME</span>
-          <span class="btn-glow"></span>
         </button>
-        <button id="btn-continue" class="menu-button">
+        <button id="btn-continue" class="menu-button" disabled>
           <span class="btn-text">CONTINUE</span>
+          <span id="continue-status" class="btn-detail"></span>
         </button>
         <button id="btn-settings" class="menu-button">
           <span class="btn-text">SETTINGS</span>
         </button>
       </div>
-      <p class="menu-version">v0.1.0 • Tech Demo</p>
+      <p class="menu-version">v0.2.0 • Tech Demo</p>
+    </div>
+  </div>
+
+  <!-- Settings screen -->
+  <div id="settings-screen" class="hidden">
+    <div class="menu-bg"></div>
+    <div class="menu-content">
+      <div class="settings-card">
+        <h2 class="settings-title">SETTINGS</h2>
+
+        <div class="setting-row">
+          <label class="setting-label">MOUSE SENSITIVITY</label>
+          <div class="setting-control">
+            <input type="range" id="mouse-sens" min="1" max="20" value="6" class="setting-slider"/>
+            <span id="mouse-sens-value" class="setting-value">6</span>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <label class="setting-label">MASTER VOLUME</label>
+          <div class="setting-control">
+            <input type="range" id="master-vol" min="0" max="100" value="70" class="setting-slider"/>
+            <span id="master-vol-value" class="setting-value">70</span>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <label class="setting-label">GRAPHICS QUALITY</label>
+          <div class="setting-control">
+            <div class="setting-toggle">
+              <button data-quality="low" class="quality-btn">LOW</button>
+              <button data-quality="medium" class="quality-btn active">MEDIUM</button>
+              <button data-quality="high" class="quality-btn">HIGH</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <label class="setting-label">INVERT Y-AXIS</label>
+          <div class="setting-control">
+            <button id="invert-y" class="setting-checkbox">
+              <span class="checkbox-box"></span>
+              <span class="checkbox-label">Off</span>
+            </button>
+          </div>
+        </div>
+
+        <button id="btn-settings-back" class="menu-button" style="margin-top: 30px;">
+          <span class="btn-text">BACK</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -94,6 +184,19 @@
 
     <div class="hud-bottom-center">
       <div id="hud-message" class="hud-message"></div>
+    </div>
+
+    <div id="save-indicator" class="save-indicator">
+      <svg viewBox="0 0 24 24" width="14" height="14">
+        <path d="M5 12l5 5L20 7" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>SAVED</span>
+    </div>
+
+    <div class="hud-world-label">
+      <span class="world-label-tag">WORLD <span id="world-num">1</span></span>
+      <span class="world-label-name" id="world-name">TEST ARENA</span>
+      <span class="world-label-level">LVL <span id="level-num">1</span></span>
     </div>
 
     <div class="hud-crosshair">

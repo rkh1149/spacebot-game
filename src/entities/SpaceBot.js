@@ -232,7 +232,7 @@ export class SpaceBot {
     // Mouse look - rotates Space Bot's facing
     const { dx } = input.consumeMouseDelta();
     if (input.pointerLocked) {
-      this.rotationY -= dx * 0.003;
+      this.rotationY -= dx * input.getMouseMultiplier();
     }
 
     // Movement input (relative to facing direction)

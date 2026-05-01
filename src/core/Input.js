@@ -13,7 +13,16 @@ export class InputManager {
     this.fireHeld = false;
     this.pointerLocked = false;
 
+    // Settings (overridden by Game.applySettings)
+    this.sensitivity = 6;
+    this.invertY = false;
+
     this._bindEvents();
+  }
+
+  // Returns mouse multiplier scaled from sensitivity (1-20 -> 0.0008-0.005)
+  getMouseMultiplier() {
+    return 0.0005 + (this.sensitivity / 20) * 0.005;
   }
 
   _bindEvents() {
