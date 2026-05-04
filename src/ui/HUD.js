@@ -17,11 +17,13 @@ export class HUD {
     this.bossHealthFill = document.getElementById('boss-health-fill');
     this.bossNameEl    = document.getElementById('boss-name-display');
     this.bossHpText    = document.getElementById('boss-hp-text');
+    this.crosshair     = document.querySelector('.hud-crosshair');
 
     this._messageTimer  = null;
     this._vignetteTimer = null;
     this._controlsTimer = null;
     this._scoreFlashTimer = null;
+    this._crosshairTimer = null;
   }
 
   // ─── Laser bar ─────────────────────────────────────────────────────────────
@@ -125,5 +127,14 @@ export class HUD {
     this._controlsTimer = setTimeout(() => {
       this.controlsHint.classList.remove('show');
     }, duration);
+  }
+
+  pulseCrosshair() {
+    if (!this.crosshair) return;
+    this.crosshair.classList.add('fire');
+    if (this._crosshairTimer) clearTimeout(this._crosshairTimer);
+    this._crosshairTimer = setTimeout(() => {
+      this.crosshair.classList.remove('fire');
+    }, 110);
   }
 }

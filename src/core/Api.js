@@ -156,6 +156,7 @@ export class ApiClient {
       laserPower: apiSave.laser_power,
       keys: apiSave.keys_obtained || [],
       playtime: apiSave.total_playtime_seconds,
+      totalScore: apiSave.total_score || 0,
       savedAt: apiSave.last_saved
     };
   }

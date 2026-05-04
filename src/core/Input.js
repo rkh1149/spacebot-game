@@ -27,43 +27,50 @@ export class InputManager {
 
   _bindEvents() {
     // Keyboard
-    document.addEventListener('keydown', (e) => {
+    this._onKeyDown = (e) => {
       this.keys.add(e.code);
-    });
-    document.addEventListener('keyup', (e) => {
+    };
+    this._onKeyUp = (e) => {
       this.keys.delete(e.code);
-    });
+    };
+    document.addEventListener('keydown', this._onKeyDown);
+    document.addEventListener('keyup', this._onKeyUp);
 
     // Mouse - request pointer lock on click
-    this.canvas.addEventListener('click', () => {
+    this._onCanvasClick = () => {
       if (!this.pointerLocked) {
         this.canvas.requestPointerLock?.();
       }
-    });
+    };
+    this.canvas.addEventListener('click', this._onCanvasClick);
 
-    document.addEventListener('pointerlockchange', () => {
+    this._onPointerLockChange = () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
-    });
+    };
+    document.addEventListener('pointerlockchange', this._onPointerLockChange);
 
-    document.addEventListener('mousemove', (e) => {
+    this._onMouseMove = (e) => {
       if (this.pointerLocked) {
         this.mouseDeltaX += e.movementX;
         this.mouseDeltaY += e.movementY;
       }
-    });
+    };
+    document.addEventListener('mousemove', this._onMouseMove);
 
-    document.addEventListener('mousedown', (e) => {
+    this._onMouseDown = (e) => {
       if (e.button === 0) {
         this.firePressed = true;
         this.fireHeld = true;
       }
-    });
+    };
+    document.addEventListener('mousedown', this._onMouseDown);
 
-    document.addEventListener('mouseup', (e) => {
+    this._onMouseUp = (e) => {
       if (e.button === 0) {
         this.fireHeld = false;
       }
-    });
+    };
+    document.addEventListener('mouseup', this._onMouseUp);
   }
 
   isPressed(code) {
@@ -84,5 +91,18 @@ export class InputManager {
     const pressed = this.firePressed;
     this.firePressed = false;
     return pressed;
+  }
+
+  dispose() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    document.removeEventListener('keyup', this._onKeyUp);
+    document.removeEventListener('pointerlockchange', this._onPointerLockChange);
+    document.removeEventListener('mousemove', this._onMouseMove);
+    document.removeEventListener('mousedown', this._onMouseDown);
+    document.removeEventListener('mouseup', this._onMouseUp);
+    this.canvas.removeEventListener('click', this._onCanvasClick);
+    this.keys.clear();
+    this.firePressed = false;
+    this.fireHeld = false;
   }
 }

@@ -17,18 +17,25 @@
 
 import * as THREE from 'three';
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
 export class SpaceBot {
   constructor(scene) {
     this.scene = scene;
     this.position = new THREE.Vector3(0, 0, 0);
     this.velocity = new THREE.Vector3();
     this.rotationY = 0;       // camera / aim yaw (mouse-controlled)
+    this.cameraPitch = -0.08; // camera / aim pitch (mouse-controlled)
     this.facingY   = 0;       // body facing (auto-rotates toward movement)
-    this.moveSpeed = 6;
+    this.moveSpeed = 7.2;
+    this.acceleration = 18;
+    this.groundDamping = 10;
     this.jumpVelocity = 0;
     this.onGround = true;
+    this.isMoving = false;
+    this.justJumped = false;
     this.lastFireTime = -10;
-    this.fireRate = 0.25;     // seconds between shots
+    this.fireRate = 0.18;     // seconds between shots
 
     this.group = new THREE.Group();
     this._build();
@@ -56,6 +63,7 @@ export class SpaceBot {
       metalness: 0.2,
       roughness: 0.4
     });
+    this.greenGlowMat = greenGlowMat;
 
     const blackMat = new THREE.MeshStandardMaterial({
       color: 0x111111,
@@ -78,6 +86,7 @@ export class SpaceBot {
     const chest = new THREE.Mesh(chestGeom, greenGlowMat);
     chest.position.set(0, 1.2, 0.48);
     this.group.add(chest);
+    this.chestCore = chest;
 
     // === HEAD (horizontal oval) ===
     const headGeom = new THREE.SphereGeometry(0.5, 24, 24);
@@ -131,8 +140,54 @@ export class SpaceBot {
     this.leftLeg = this._buildLeg(-0.25, 0.4, 0);
     this.rightLeg = this._buildLeg(0.25, 0.4, 0);
 
+    // === BACK THRUSTERS ===
+    this._buildThrusters();
+
     // Apply initial position
     this.group.position.copy(this.position);
+  }
+
+  _buildThrusters() {
+    this.thrusterFlames = [];
+    this.thrusterLights = [];
+
+    const housingMat = new THREE.MeshStandardMaterial({
+      color: 0x444c62,
+      metalness: 0.9,
+      roughness: 0.22
+    });
+    const flameMat = new THREE.MeshBasicMaterial({
+      color: 0x55ddff,
+      transparent: true,
+      opacity: 0.0,
+      depthWrite: false
+    });
+
+    for (const x of [-0.28, 0.28]) {
+      const housing = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11, 0.15, 0.34, 14),
+        housingMat
+      );
+      housing.rotation.x = Math.PI / 2;
+      housing.position.set(x, 1.2, -0.58);
+      housing.castShadow = true;
+      this.group.add(housing);
+
+      const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.13, 0.55, 16),
+        flameMat.clone()
+      );
+      flame.rotation.x = -Math.PI / 2;
+      flame.position.set(x, 1.2, -0.9);
+      flame.scale.set(0.5, 0.5, 0.2);
+      this.group.add(flame);
+      this.thrusterFlames.push(flame);
+
+      const light = new THREE.PointLight(0x55ddff, 0, 3.5);
+      light.position.set(x, 1.2, -0.78);
+      this.group.add(light);
+      this.thrusterLights.push(light);
+    }
   }
 
   _buildArm(x, y, z) {
@@ -229,47 +284,72 @@ export class SpaceBot {
     return legGroup;
   }
 
-  update(dt, input, camera) {
+  update(dt, input, movementProfile = {}) {
+    this.justJumped = false;
+
     // Mouse controls camera yaw (also used for aim direction in Game.js)
-    const { dx } = input.consumeMouseDelta();
+    const { dx, dy } = input.consumeMouseDelta();
     if (input.pointerLocked) {
-      this.rotationY -= dx * input.getMouseMultiplier();
+      const mult = input.getMouseMultiplier();
+      this.rotationY -= dx * mult;
+      this.cameraPitch = clamp(
+        this.cameraPitch - dy * mult * (input.invertY ? -1 : 1),
+        -0.55,
+        0.48
+      );
     }
 
-    // WASD — movement relative to camera yaw
+    // WASD movement is relative to the camera, where W follows the crosshair.
+    const forward = new THREE.Vector3(Math.sin(this.rotationY), 0, Math.cos(this.rotationY));
+    const right = new THREE.Vector3(-Math.cos(this.rotationY), 0, Math.sin(this.rotationY));
     const rawMove = new THREE.Vector3();
-    if (input.isPressed('KeyW')) rawMove.z -= 1;
-    if (input.isPressed('KeyS')) rawMove.z += 1;
-    if (input.isPressed('KeyA')) rawMove.x -= 1;
-    if (input.isPressed('KeyD')) rawMove.x += 1;
+    if (input.isPressed('KeyW')) rawMove.add(forward);
+    if (input.isPressed('KeyS')) rawMove.sub(forward);
+    if (input.isPressed('KeyD')) rawMove.add(right);
+    if (input.isPressed('KeyA')) rawMove.sub(right);
 
     let isMoving = false;
+    const speedMultiplier = movementProfile.speedMultiplier ?? 1;
+    const traction = movementProfile.traction ?? 1;
+    const damping = movementProfile.damping ?? this.groundDamping;
     if (rawMove.lengthSq() > 0) {
       isMoving = true;
       rawMove.normalize();
-      // World-space direction from camera yaw
-      const worldMove = rawMove.clone().applyEuler(new THREE.Euler(0, this.rotationY, 0));
+      const desiredVelocity = rawMove.clone().multiplyScalar(this.moveSpeed * speedMultiplier);
+      const blend = Math.min(1, this.acceleration * traction * dt);
+      this.velocity.x += (desiredVelocity.x - this.velocity.x) * blend;
+      this.velocity.z += (desiredVelocity.z - this.velocity.z) * blend;
 
-      // Smoothly rotate body to face movement direction (full 360° turns work)
-      const targetFacing = Math.atan2(worldMove.x, worldMove.z);
+      // Body turns to face movement direction — A turns left, D turns right, S turns around
+      const targetFacing = Math.atan2(rawMove.x, rawMove.z);
       let delta = targetFacing - this.facingY;
       while (delta >  Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
-      this.facingY += delta * Math.min(1, 12 * dt);
-
-      this.position.add(worldMove.multiplyScalar(this.moveSpeed * dt));
+      this.facingY += delta * Math.min(1, 10 * dt);
     } else {
-      // Idle: body faces AWAY from camera (π offset keeps back toward camera)
-      let delta = (this.rotationY + Math.PI) - this.facingY;
+      const decay = Math.max(0, 1 - damping * dt);
+      this.velocity.x *= decay;
+      this.velocity.z *= decay;
+      if (this.velocity.lengthSq() < 0.0025) {
+        this.velocity.x = 0;
+        this.velocity.z = 0;
+      }
+
+      // Idle: settle toward the camera's forward direction so aiming feels direct.
+      let delta = this.rotationY - this.facingY;
       while (delta >  Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
-      this.facingY += delta * Math.min(1, 2.5 * dt);
+      this.facingY += delta * Math.min(1, 4 * dt);
     }
+    this.position.x += this.velocity.x * dt;
+    this.position.z += this.velocity.z * dt;
+    this.isMoving = isMoving || this.velocity.lengthSq() > 0.1;
 
     // Jump
     if (input.isPressed('Space') && this.onGround) {
       this.jumpVelocity = 8;
       this.onGround = false;
+      this.justJumped = true;
     }
 
     // Gravity & ground
@@ -286,9 +366,10 @@ export class SpaceBot {
     // Body uses facingY; camera in Game.js uses rotationY
     this.group.position.copy(this.position);
     this.group.rotation.y = this.facingY;
+    this.group.rotation.z = 0;
 
     // Walking animation
-    if (isMoving && this.onGround) {
+    if (this.isMoving && this.onGround) {
       const bob = Math.sin(performance.now() * 0.012) * 0.08;
       this.group.position.y = this.position.y + bob;
       const swing = Math.sin(performance.now() * 0.012) * 0.4;
@@ -296,6 +377,8 @@ export class SpaceBot {
       this.rightArm.rotation.x = -swing;
       this.leftLeg.rotation.x  = -swing * 0.8;
       this.rightLeg.rotation.x =  swing * 0.8;
+      const localVel = this.velocity.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -this.facingY);
+      this.group.rotation.z = clamp(-localVel.x * 0.035, -0.16, 0.16);
     } else {
       this.leftArm.rotation.x  *= 0.85;
       this.rightArm.rotation.x *= 0.85;
@@ -305,6 +388,26 @@ export class SpaceBot {
 
     if (this.antennaBall) {
       this.antennaBall.scale.setScalar(1 + Math.sin(performance.now() * 0.005) * 0.1);
+    }
+    if (this.chestCore) {
+      this.chestCore.material.emissiveIntensity = 1.3 + Math.sin(performance.now() * 0.007) * 0.25;
+    }
+
+    this._updateThrusters(performance.now(), movementProfile);
+  }
+
+  _updateThrusters(now, movementProfile) {
+    if (!this.thrusterFlames) return;
+    const speedRatio = clamp(this.velocity.length() / (this.moveSpeed * (movementProfile.speedMultiplier ?? 1)), 0, 1);
+    const thrust = clamp(speedRatio * 0.85 + (!this.onGround ? 0.65 : 0), 0, 1);
+    const flicker = 0.78 + Math.sin(now * 0.04) * 0.18 + Math.random() * 0.08;
+
+    for (const flame of this.thrusterFlames) {
+      flame.material.opacity = thrust * 0.7;
+      flame.scale.set(0.65 + thrust * 0.45, 0.65 + thrust * 0.45, Math.max(0.12, thrust * flicker));
+    }
+    for (const light of this.thrusterLights) {
+      light.intensity = thrust * (1.4 + Math.random() * 0.35);
     }
   }
 
@@ -326,9 +429,12 @@ export class SpaceBot {
     const mat = new THREE.MeshStandardMaterial({
       color: 0x7fff7f,
       emissive: 0x7fff7f,
-      emissiveIntensity: 3
+      emissiveIntensity: 4
     });
     const mesh = new THREE.Mesh(geom, mat);
+    const light = new THREE.PointLight(0x7fff7f, 1.7, 4);
+    light.position.set(0, 0, 0);
+    mesh.add(light);
 
     // Spawn at chest height in front of Space Bot
     mesh.position.copy(this.position);

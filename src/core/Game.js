@@ -54,6 +54,7 @@ const WORLD_CONFIGS = {
     moonPos:     new THREE.Vector3(-15, 30, -20),
     hemiSky:     0x440066,  hemiGround: 0x001a00, hemiIntensity: 0.5,
     enemyOptions: {},
+    movement: { speedMultiplier: 1.02, traction: 1.05, damping: 10.5, stepInterval: 0.34 },
     initialEnemies: [
       { x:  12, z:  15, shiny: false },
       { x: -14, z:  12, shiny: true  },
@@ -83,6 +84,7 @@ const WORLD_CONFIGS = {
     moonPos:     new THREE.Vector3(0, 30, 0),
     hemiSky:     0x002244,  hemiGround: 0x001100, hemiIntensity: 0.45,
     enemyOptions: { bodyColor: 0x0a3535, emissiveColor: 0x00ffcc, lightColor: 0x00ffcc },
+    movement: { speedMultiplier: 0.92, traction: 0.82, damping: 7.5, stepInterval: 0.40 },
     initialEnemies: [
       { x:  12, z:  14, shiny: false },
       { x: -14, z:  10, shiny: true  },
@@ -112,6 +114,7 @@ const WORLD_CONFIGS = {
     moonPos:     new THREE.Vector3(10, 28, -18),
     hemiSky:     0x330808,  hemiGround: 0x0a0000, hemiIntensity: 0.40,
     enemyOptions: { bodyColor: 0x3a1a0a, emissiveColor: 0xff2200, lightColor: 0xff1100 },
+    movement: { speedMultiplier: 1.08, traction: 1.16, damping: 12, stepInterval: 0.30 },
     initialEnemies: [
       { x:  14, z:  16, shiny: false },
       { x: -15, z:  12, shiny: true  },
@@ -135,13 +138,14 @@ const WORLD_CONFIGS = {
 // ─── Game class ───────────────────────────────────────────────────────────────
 
 export class Game {
-  constructor({ canvas, isNewGame, initialState, settings, api, audio, onSaveSuccess }) {
+  constructor({ canvas, isNewGame, initialState, settings, api, audio, onSaveSuccess, onLeaderboardUpdate }) {
     this.canvas        = canvas;
     this.isNewGame     = isNewGame;
     this.api           = api;
     this.audio         = audio || null;
     this.settings      = settings || {};
     this.onSaveSuccess = onSaveSuccess || (() => {});
+    this.onLeaderboardUpdate = onLeaderboardUpdate || (() => {});
     this.running       = false;
     this.paused        = false;
     this._transitioning = false;
@@ -170,10 +174,16 @@ export class Game {
     this._bossTriggered = false;
     this._levelComplete = false;
     this._lastSaveAt    = 0;
+    this._resumeWorld      = !isNewGame ? initialState?.currentWorld : null;
+    this._resumeBatteries  = !isNewGame ? (initialState?.batteries ?? 0) : 0;
+    this._resumeStateUsed  = false;
 
     // Spawn / contact
     this._spawnTimer      = SPAWN_INTERVAL;
     this._contactCooldown = 0;
+    this._stepSfxCooldown = 0;
+    this._hitSfxCooldown  = 0;
+    this._timers          = new Set();
 
     // Visual FX
     this._deathParticles = [];
@@ -314,11 +324,12 @@ export class Game {
   _buildWorld(worldNum) {
     const cfg = WORLD_CONFIGS[worldNum];
     if (!cfg) return;
+    const restoredBatteries = this._getRestoredBatteryCount(worldNum, cfg);
 
     this.state.currentWorld = worldNum;
     this._worldScore        = 0;
-    this._worldBatteries    = 0;
-    this.state.batteries    = 0;
+    this._worldBatteries    = restoredBatteries;
+    this.state.batteries    = restoredBatteries;
     this._bossActive        = false;
     this._bossTriggered     = false;
     this._levelComplete     = false;
@@ -337,10 +348,10 @@ export class Game {
     for (const e of cfg.initialEnemies) this._spawnEnemy(e.x, 0, e.z, e.shiny);
 
     // Initial batteries
-    for (const b of cfg.initialBatteries) this._spawnBattery(b.x, 1, b.z);
+    for (const b of cfg.initialBatteries.slice(restoredBatteries)) this._spawnBattery(b.x, 1, b.z);
 
     // HUD
-    this.hud.updateBatteries(0, BATTERY_TARGET);
+    this.hud.updateBatteries(this.state.batteries, BATTERY_TARGET);
     this.hud.updateScore(this.state.totalScore);
     this.hud.updateEnemyCount(cfg.initialEnemies.length);
     this.hud.hideBossHealth();
@@ -355,6 +366,12 @@ export class Game {
     log.info(`World ${worldNum} built — ${cfg.worldName}`);
     log.debug(`Boss triggers at: ${SCORE_TARGET} world pts OR ${BATTERY_TARGET} batteries`);
     this.audio?.startWorldMusic(worldNum);
+  }
+
+  _getRestoredBatteryCount(worldNum, cfg) {
+    if (this._resumeStateUsed || this._resumeWorld !== worldNum) return 0;
+    this._resumeStateUsed = true;
+    return Math.max(0, Math.min(BATTERY_TARGET, cfg.initialBatteries.length, this._resumeBatteries || 0));
   }
 
   _teardownWorld() {
@@ -387,18 +404,19 @@ export class Game {
 
     this.hud.updateLaserPower(this.state.laserPower / this.state.maxLaserPower);
 
+    this.running = true;
+
     const cfg = WORLD_CONFIGS[this.state.currentWorld];
     if (this.isNewGame) {
       for (const m of cfg.introMessages) {
-        setTimeout(() => this.hud.flashMessage(m.text, m.dur), m.delay);
+        this._setTimer(() => this.hud.flashMessage(m.text, m.dur), m.delay);
       }
-      setTimeout(() => this.hud.showControlsHint(9000), 400);
+      this._setTimer(() => this.hud.showControlsHint(9000), 400);
     } else {
       this.hud.flashMessage(`WELCOME BACK — WORLD ${this.state.currentWorld}: ${cfg.worldName}`, 3000);
       this.hud.showControlsHint(6000);
     }
 
-    this.running = true;
     this.clock.start();
     this._loop();
   }
@@ -407,7 +425,7 @@ export class Game {
 
   async _doWorldTransition(nextWorld) {
     log.info(`Transitioning to World ${nextWorld}…`);
-    await this.saveProgress();
+    await this.saveProgress({ syncLeaderboard: true });
 
     await sleep(1200);
     const overlay = document.getElementById('level-transition');
@@ -416,6 +434,7 @@ export class Game {
 
     this._teardownWorld();
     this._buildWorld(nextWorld);
+    this.saveProgress({ syncLeaderboard: true });
 
     await sleep(400);
     overlay.classList.remove('active');
@@ -425,7 +444,7 @@ export class Game {
 
     const cfg = WORLD_CONFIGS[nextWorld];
     for (const m of cfg.introMessages) {
-      setTimeout(() => this.hud.flashMessage(m.text, m.dur), m.delay);
+      this._setTimer(() => this.hud.flashMessage(m.text, m.dur), m.delay);
     }
     this.hud.showControlsHint(6000);
     log.info(`Welcome to ${cfg.worldName}!`);
@@ -479,13 +498,20 @@ export class Game {
 
     // ── Space Bot ──────────────────────────────────────────────────────────
     if (this.spaceBot) {
-      this.spaceBot.update(dt, this.input, this.camera);
+      this.spaceBot.update(dt, this.input, this._getMovementProfile());
       this._resolveCollisions();
 
-      if (this.input.consumeFirePressed() && this.spaceBot.canFire(elapsed)) {
+      if (this.spaceBot.justJumped) this.audio?.playJump();
+      this._updateMovementAudio(dt);
+
+      const singleFire = this.input.consumeFirePressed();
+      const wantsFire = singleFire || this.input.fireHeld;
+      if (wantsFire && this.spaceBot.canFire(elapsed)) {
         const proj = this.spaceBot.fire(elapsed, this._getAimDirection());
         this.projectiles.push(proj);
         this.scene.add(proj.mesh);
+        this._spawnMuzzleFlash(proj.mesh.position, proj.velocity.clone().normalize());
+        this.hud.pulseCrosshair();
         this.audio?.playLaser();
       }
     }
@@ -530,12 +556,16 @@ export class Game {
       let hit = false;
       for (const enemy of this.enemies) {
         if (!enemy.alive) continue;
-        if (enemy.position.distanceTo(proj.mesh.position) < 1.2) {
+        const enemyHitCenter = enemy.position.clone();
+        enemyHitCenter.y += 0.7;
+        if (enemyHitCenter.distanceTo(proj.mesh.position) < 1.35) {
           enemy.takeDamage(25);
           this.scene.remove(proj.mesh);
           proj.alive = false;
           this.projectiles.splice(i, 1);
           hit = true;
+          this._spawnImpactSpark(proj.mesh.position.x, proj.mesh.position.y, proj.mesh.position.z, enemy.shiny ? 0xffaa44 : 0xff4444);
+          this.audio?.playImpact();
 
           if (!enemy.alive) {
             this._spawnDeathParticles(
@@ -566,6 +596,8 @@ export class Game {
           this.scene.remove(proj.mesh);
           proj.alive = false;
           this.projectiles.splice(i, 1);
+          this._spawnImpactSpark(proj.mesh.position.x, proj.mesh.position.y, proj.mesh.position.z, 0xffff66);
+          this.audio?.playImpact();
           this.hud.updateBossHealth(this._boss.getHealthPercent());
           if (!this._boss.alive) this._bossDefeated();
         }
@@ -682,11 +714,13 @@ export class Game {
     const cfg = WORLD_CONFIGS[this.state.currentWorld];
     this.hud.flashMessage('⚠ BOSS INCOMING!', 2200, true);
 
-    setTimeout(() => {
+    this.audio?.playBossAwaken();
+
+    this._setTimer(() => {
       this.hud.flashMessage(`${cfg.bossName} AWAKENS!`, 2500, true);
     }, 2600);
 
-    setTimeout(() => {
+    this._setTimer(() => {
       this._boss = new Boss(this.scene, this.state.currentWorld);
       this._boss.position.set(0, 0, -20);
       this.hud.showBossHealth(1.0, cfg.bossName);
@@ -714,15 +748,15 @@ export class Game {
     const nextWorld = this.state.currentWorld + 1;
     if (WORLD_CONFIGS[nextWorld]) {
       this.hud.flashMessage(`${cfg.bossName} DESTROYED! +${BOSS_BONUS} BONUS!`, 2200, true);
-      setTimeout(() => this.hud.flashMessage(`ENTERING WORLD ${nextWorld}…`, 2000), 2800);
+      this._setTimer(() => this.hud.flashMessage(`ENTERING WORLD ${nextWorld}…`, 2000), 2800);
       this._transitioning = true;
-      setTimeout(() => this._doWorldTransition(nextWorld), 5200);
+      this._setTimer(() => this._doWorldTransition(nextWorld), 5200);
     } else {
       // Final boss defeated — save immediately then guide player back to menu
-      this.saveProgress();
+      this.saveProgress({ syncLeaderboard: true });
       this.hud.flashMessage('CORRUPT DESTROYED! YOU WIN!', 3000, true);
-      setTimeout(() => this.hud.flashMessage(`FINAL SCORE: ${this.state.totalScore.toLocaleString()} PTS`, 3500, true), 3500);
-      setTimeout(() => this.hud.flashMessage('PRESS ESC → QUIT TO SEE YOUR RANK', 5000, true), 7500);
+      this._setTimer(() => this.hud.flashMessage(`FINAL SCORE: ${this.state.totalScore.toLocaleString()} PTS`, 3500, true), 3500);
+      this._setTimer(() => this.hud.flashMessage('PRESS ESC → QUIT TO SEE YOUR RANK', 5000, true), 7500);
       log.info(`GAME COMPLETE! Final score: ${this.state.totalScore}`);
     }
   }
@@ -768,18 +802,59 @@ export class Game {
     }
   }
 
+  _spawnMuzzleFlash(position, direction) {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.18, 10, 10),
+      new THREE.MeshBasicMaterial({ color: 0xbaffba, transparent: true, opacity: 0.9 })
+    );
+    mesh.position.copy(position).add(direction.multiplyScalar(0.2));
+    this.scene.add(mesh);
+    this._deathParticles.push({
+      mesh,
+      vx: direction.x * 2,
+      vy: 0,
+      vz: direction.z * 2,
+      life: 0.28,
+    });
+  }
+
+  _spawnImpactSpark(x, y, z, color) {
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 4;
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.035 + Math.random() * 0.035, 5, 5),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 3, transparent: true, opacity: 1 })
+      );
+      mesh.position.set(x, y, z);
+      this.scene.add(mesh);
+      this._deathParticles.push({
+        mesh,
+        vx: Math.cos(angle) * speed,
+        vy: 0.8 + Math.random() * 2.2,
+        vz: Math.sin(angle) * speed,
+        life: 0.5,
+      });
+    }
+  }
+
   // ─── Player damage ────────────────────────────────────────────────────────
 
   _damagePlayer(amount) {
     this.state.laserPower = Math.max(0, this.state.laserPower - amount);
     this.hud.updateLaserPower(this.state.laserPower / this.state.maxLaserPower);
     this.hud.showDamageVignette();
+    if (this._hitSfxCooldown <= 0) {
+      this.audio?.playPlayerHit();
+      this._hitSfxCooldown = 0.5;
+    }
 
     if (this.state.laserPower <= 0) {
       this._shake = 0.45;
       this.hud.flashMessage('SYSTEM CRITICAL — REBOOTING', 2500);
       this.state.laserPower = this.state.maxLaserPower;
       this.spaceBot.position.set(0, 0, 0);
+      this.spaceBot.velocity.set(0, 0, 0);
       log.warn('Player critical — respawned at origin.');
     }
   }
@@ -791,6 +866,8 @@ export class Game {
     const half = this.world.size / 2 - 1;
     this.spaceBot.position.x = Math.max(-half, Math.min(half, this.spaceBot.position.x));
     this.spaceBot.position.z = Math.max(-half, Math.min(half, this.spaceBot.position.z));
+    if (Math.abs(this.spaceBot.position.x) >= half) this.spaceBot.velocity.x *= 0.15;
+    if (Math.abs(this.spaceBot.position.z) >= half) this.spaceBot.velocity.z *= 0.15;
 
     for (const c of this.world.colliders) {
       const dx = this.spaceBot.position.x - c.x;
@@ -800,8 +877,15 @@ export class Game {
       if (distSq < minDist * minDist && distSq > 0.0001) {
         const dist = Math.sqrt(distSq);
         const push = (minDist - dist) / dist;
-        this.spaceBot.position.x += dx * push;
-        this.spaceBot.position.z += dz * push;
+        const nx = dx / dist;
+        const nz = dz / dist;
+        this.spaceBot.position.x += nx * (minDist - dist);
+        this.spaceBot.position.z += nz * (minDist - dist);
+        const intoWall = this.spaceBot.velocity.x * nx + this.spaceBot.velocity.z * nz;
+        if (intoWall < 0) {
+          this.spaceBot.velocity.x -= nx * intoWall;
+          this.spaceBot.velocity.z -= nz * intoWall;
+        }
       }
     }
   }
@@ -809,24 +893,38 @@ export class Game {
   // ─── Aim direction ────────────────────────────────────────────────────────
 
   _getAimDirection() {
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-    const target = new THREE.Vector3();
-    if (raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.8), target)) {
-      const chest = this.spaceBot.position.clone();
-      chest.y += 1.2;
-      const dir = target.sub(chest);
-      if (dir.length() > 0.5) return dir.normalize();
-    }
-    return new THREE.Vector3(0, 0, 1).applyEuler(new THREE.Euler(0, this.spaceBot.facingY, 0));
+    return new THREE.Vector3(0, 0, 1).applyEuler(new THREE.Euler(0, this.spaceBot.facingY, 0)).normalize();
+  }
+
+  _getMovementProfile() {
+    return WORLD_CONFIGS[this.state.currentWorld]?.movement || {};
+  }
+
+  _updateMovementAudio(dt) {
+    if (this._hitSfxCooldown > 0) this._hitSfxCooldown -= dt;
+    if (this._stepSfxCooldown > 0) this._stepSfxCooldown -= dt;
+    if (!this.spaceBot?.isMoving || !this.spaceBot.onGround || this._stepSfxCooldown > 0) return;
+    const profile = this._getMovementProfile();
+    this._stepSfxCooldown = profile.stepInterval ?? 0.34;
+    this.audio?.playStep(this.state.currentWorld);
   }
 
   // ─── Camera ───────────────────────────────────────────────────────────────
 
   _updateCamera(dt) {
     if (!this.spaceBot) return;
-    const offset = new THREE.Vector3(0, 4, 7).applyEuler(new THREE.Euler(0, this.spaceBot.rotationY, 0));
-    this.camera.position.lerp(this.spaceBot.position.clone().add(offset), 5 * dt);
+    const yaw = this.spaceBot.rotationY;
+    const pitch = this.spaceBot.cameraPitch ?? -0.08;
+    const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+    const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const distance = this.state.currentWorld === 2 ? 6.4 : 7.2;
+    const height = 3.4 - Math.sin(pitch) * 1.8;
+    const shoulder = 0.55;
+    const desiredPos = this.spaceBot.position.clone()
+      .add(forward.clone().multiplyScalar(-distance))
+      .add(right.multiplyScalar(shoulder));
+    desiredPos.y += height;
+    this.camera.position.lerp(desiredPos, Math.min(1, 7 * dt));
 
     if (this._shake > 0) {
       this.camera.position.x += (Math.random() - 0.5) * this._shake;
@@ -836,9 +934,23 @@ export class Game {
     }
 
     const lookTarget = this.spaceBot.position.clone()
-      .add(new THREE.Vector3(0, 0, -6).applyEuler(new THREE.Euler(0, this.spaceBot.rotationY, 0)));
-    lookTarget.y += 1.0;
+      .add(forward.multiplyScalar(5.5));
+    lookTarget.y += 1.25 + Math.sin(pitch) * 5.0;
     this.camera.lookAt(lookTarget);
+  }
+
+  _setTimer(fn, delay) {
+    const id = setTimeout(() => {
+      this._timers.delete(id);
+      if (this.running) fn();
+    }, delay);
+    this._timers.add(id);
+    return id;
+  }
+
+  _clearTimers() {
+    for (const id of this._timers) clearTimeout(id);
+    this._timers.clear();
   }
 
   // ─── Save / load ──────────────────────────────────────────────────────────
@@ -850,7 +962,7 @@ export class Game {
     this.saveProgress();
   }
 
-  async saveProgress() {
+  async saveProgress({ syncLeaderboard = false } = {}) {
     if (!this.api) return;
     try {
       const result = await this.api.save({
@@ -863,9 +975,23 @@ export class Game {
         totalScore:   this.state.totalScore,
       });
       this.onSaveSuccess(!!result.offline);
+      if (syncLeaderboard) await this._refreshLeaderboard();
       log.debug(`Saved. World ${this.state.currentWorld}, score ${this.state.totalScore}, playtime ${Math.floor(this.state.playtime)}s`);
     } catch (err) {
       console.warn('[SpaceBot] Save failed:', err);
+    }
+  }
+
+  async _refreshLeaderboard() {
+    if (!this.api?.leaderboard) return;
+    try {
+      const rows = await this.api.leaderboard();
+      this.onLeaderboardUpdate(rows);
+      if (rows?.some(row => row.username?.toLowerCase() === this.api.getStoredUsername()?.toLowerCase())) {
+        log.event('Leaderboard refreshed with current score.');
+      }
+    } catch (err) {
+      console.warn('[SpaceBot] Leaderboard refresh failed:', err);
     }
   }
 
@@ -875,6 +1001,7 @@ export class Game {
     this.paused = true;
     document.getElementById('pause-menu').classList.remove('hidden');
     document.exitPointerLock?.();
+    this.saveProgress({ syncLeaderboard: true });
   }
 
   resume() {
@@ -885,7 +1012,9 @@ export class Game {
 
   stop() {
     this.running = false;
+    this._clearTimers();
     this.audio?.stopMusic();
+    this.input?.dispose();
     window.removeEventListener('resize', this._onResize);
     document.removeEventListener('keydown', this._onKeyDown);
     document.getElementById('level-transition')?.classList.remove('active');

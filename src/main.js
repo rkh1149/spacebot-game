@@ -133,10 +133,17 @@ async function showMainMenu() {
 
   try {
     const save = await api.load();
-    if (save && (save.batteries > 0 || save.currentLevel > 1 || save.currentWorld > 1)) {
+    if (save && (
+      save.batteries > 0 ||
+      save.currentLevel > 1 ||
+      save.currentWorld > 1 ||
+      save.totalScore > 0 ||
+      save.playtime > 0 ||
+      save.laserPower < 100
+    )) {
       continueBtn.disabled = false;
       continueStatus.textContent =
-        `WORLD ${save.currentWorld} • LVL ${save.currentLevel} • ${save.batteries} BATTERIES`;
+        `WORLD ${save.currentWorld} • ${Number(save.totalScore || 0).toLocaleString()} PTS • ${save.batteries} BATTERIES`;
     } else {
       continueBtn.disabled = true;
       continueStatus.textContent = 'NO SAVE FOUND';
@@ -147,7 +154,18 @@ async function showMainMenu() {
   }
 
   // Refresh leaderboard (fire-and-forget, non-blocking)
-  api.leaderboard().then(rows => updateLeaderboard(rows));
+  refreshLeaderboard();
+}
+
+async function refreshLeaderboard() {
+  try {
+    const rows = await api.leaderboard();
+    updateLeaderboard(rows);
+    return rows;
+  } catch {
+    updateLeaderboard(null);
+    return null;
+  }
 }
 
 function updateLeaderboard(rows) {
@@ -212,8 +230,8 @@ function setupMenuHandlers() {
   });
   document.getElementById('btn-quit').addEventListener('click', async () => {
     if (game) {
-      // Final save before quitting
-      try { await game.saveProgress(); } catch {}
+      // Final save and leaderboard sync before quitting the world.
+      try { await game.saveProgress({ syncLeaderboard: true }); } catch {}
       game.stop();
       game = null;
     }
@@ -318,6 +336,10 @@ function setupSettingsHandlers() {
 // ============================================================
 
 function startGame({ isNewGame, save }) {
+  if (game) {
+    game.stop();
+    game = null;
+  }
   mainMenu.classList.add('hidden');
   hud.classList.remove('hidden');
 
@@ -333,7 +355,8 @@ function startGame({ isNewGame, save }) {
     settings,
     api,
     audio: audioManager,
-    onSaveSuccess: showSaveIndicator
+    onSaveSuccess: showSaveIndicator,
+    onLeaderboardUpdate: updateLeaderboard
   });
   game.start();
 }
