@@ -5,6 +5,7 @@
 
 import { Game } from './core/Game.js';
 import { api } from './core/Api.js';
+import { audioManager } from './core/AudioManager.js';
 
 // DOM references
 const loadingScreen = document.getElementById('loading-screen');
@@ -144,6 +145,42 @@ async function showMainMenu() {
     continueBtn.disabled = true;
     continueStatus.textContent = 'NO SAVE FOUND';
   }
+
+  // Refresh leaderboard (fire-and-forget, non-blocking)
+  api.leaderboard().then(rows => updateLeaderboard(rows));
+}
+
+function updateLeaderboard(rows) {
+  const list = document.getElementById('leaderboard-list');
+  if (!list) return;
+
+  if (!rows || rows.length === 0) {
+    list.innerHTML = '<li class="lb-empty">No scores yet — be the first!</li>';
+    return;
+  }
+
+  const me = api.getStoredUsername()?.toLowerCase();
+  const rankClass = ['gold', 'silver', 'bronze'];
+
+  list.innerHTML = rows.map((row, i) => {
+    const rank = i + 1;
+    const rc   = rankClass[i] || '';
+    const isMe = row.username?.toLowerCase() === me;
+    const score = Number(row.total_score).toLocaleString();
+    const world = `W${row.current_world}`;
+    return `<li>
+      <span class="lb-rank ${rc}">${rank}</span>
+      <span class="lb-name${isMe ? ' me' : ''}">${escapeHtml(row.username)}</span>
+      <span class="lb-score">${score}</span>
+      <span class="lb-world">${world}</span>
+    </li>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])
+  );
 }
 
 function setupMenuHandlers() {
@@ -231,6 +268,8 @@ function setupSettingsHandlers() {
     settings.masterVolume = parseInt(vol.value);
     volVal.textContent = settings.masterVolume;
     saveSettings();
+    audioManager.setVolume(settings.masterVolume / 100);
+    if (game) game.applySettings(settings);
   });
 
   // Graphics quality
@@ -282,12 +321,10 @@ function startGame({ isNewGame, save }) {
   mainMenu.classList.add('hidden');
   hud.classList.remove('hidden');
 
-  // Update HUD world/level label
+  // Update HUD world label — Game._buildWorld will overwrite world-name correctly
   const w = save?.currentWorld || 1;
-  const l = save?.currentLevel || 1;
   document.getElementById('world-num').textContent = w;
-  document.getElementById('level-num').textContent = l;
-  document.getElementById('world-name').textContent = isNewGame ? 'TEST ARENA' : 'TEST ARENA';
+  document.getElementById('world-name').textContent = '';
 
   game = new Game({
     canvas: document.getElementById('game-canvas'),
@@ -295,6 +332,7 @@ function startGame({ isNewGame, save }) {
     initialState: save || null,
     settings,
     api,
+    audio: audioManager,
     onSaveSuccess: showSaveIndicator
   });
   game.start();

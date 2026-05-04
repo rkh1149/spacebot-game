@@ -979,3 +979,402 @@ html, body {
   margin-left: 4px;
   border-left: 1px solid var(--color-text-faint);
 }
+
+/* ===========================
+   Enemy Counter (HUD top-centre)
+   =========================== */
+
+.hud-top-center {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.hud-enemy-counter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  background: rgba(10, 14, 39, 0.72);
+  border: 1px solid rgba(255, 107, 107, 0.38);
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.3s ease;
+}
+
+.hud-enemy-counter.clear {
+  border-color: rgba(127, 255, 127, 0.4);
+}
+
+#enemy-count {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ff6b6b;
+  transition: color 0.3s ease;
+  min-width: 1.6rem;
+  text-align: right;
+}
+
+#enemy-count.clear { color: var(--color-accent); }
+
+.enemy-label {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--color-text-dim);
+}
+
+/* ===========================
+   Objective Strip (below battery counter)
+   =========================== */
+
+.objective-strip {
+  position: absolute;
+  top: 96px;
+  right: 30px;
+  min-width: 220px;
+}
+
+.objective-label {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--color-text-faint);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.objective-track {
+  height: 3px;
+  background: var(--color-bg-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.objective-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+  box-shadow: 0 0 8px var(--color-accent-glow);
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===========================
+   Damage Vignette
+   =========================== */
+
+.damage-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 0;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 35%,
+    rgba(220, 30, 30, 0.0) 100%
+  );
+  transition: opacity 0.08s ease;
+}
+
+.damage-vignette.flash {
+  opacity: 1;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 28%,
+    rgba(220, 30, 30, 0.65) 100%
+  );
+  transition: opacity 0s;
+}
+
+/* ===========================
+   Controls Hint (bottom centre, below message)
+   =========================== */
+
+.controls-hint {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--color-text-dim);
+  background: rgba(10, 14, 39, 0.65);
+  border: 1px solid rgba(127, 255, 127, 0.14);
+  padding: 7px 20px;
+  border-radius: 3px;
+  white-space: nowrap;
+  opacity: 0;
+  margin-top: 10px;
+  display: inline-block;
+  transition: opacity 1.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.controls-hint.show { opacity: 1; }
+
+/* Give message area more breathing room */
+.hud-bottom-center {
+  bottom: 50px;
+}
+
+/* Wave banner — reuse hud-message but bigger */
+.hud-message.wave {
+  font-size: 1.6rem;
+  color: #ffaa44;
+  text-shadow: 0 0 30px rgba(255, 170, 68, 0.7);
+}
+
+/* ===========================
+   Level Transition Overlay
+   =========================== */
+
+.level-transition {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 900;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.65s ease;
+}
+
+.level-transition.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ===========================
+   Score display
+   =========================== */
+
+.score-stat { margin-top: 8px; }
+
+.score-icon { color: #ffdd44; }
+
+.score-counter { font-size: 1.25rem; letter-spacing: 0.08em; }
+
+#score-count {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffdd44;
+  text-shadow: 0 0 12px rgba(255, 221, 68, 0.65);
+  transition: color 0.15s;
+}
+
+#score-count.gain { color: #7fff7f; text-shadow: 0 0 18px rgba(127,255,127,0.8); }
+#score-count.loss { color: #ff6b6b; text-shadow: 0 0 18px rgba(255,107,107,0.8); }
+
+/* ===========================
+   Boss health strip (top-centre)
+   =========================== */
+
+.boss-strip {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 280px;
+}
+
+.boss-strip.hidden { display: none; }
+
+.boss-strip-name {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #ff4444;
+  text-shadow: 0 0 14px rgba(255, 68, 68, 0.7);
+  animation: bossPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes bossPulse {
+  from { opacity: 0.85; }
+  to   { opacity: 1;    }
+}
+
+.boss-track {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 68, 68, 0.12);
+  border: 1px solid rgba(255, 68, 68, 0.35);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.boss-health-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff0000, #ff6644);
+  border-radius: 5px;
+  transition: width 0.2s ease;
+  box-shadow: 0 0 10px rgba(255,60,60,0.6);
+}
+
+.boss-health-fill.critical {
+  background: linear-gradient(90deg, #880000, #ff2200);
+  animation: critFlash 0.4s ease-in-out infinite alternate;
+}
+
+@keyframes critFlash {
+  from { opacity: 0.7; }
+  to   { opacity: 1;   }
+}
+
+.boss-hp-text {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  color: rgba(255, 100, 100, 0.8);
+  letter-spacing: 0.1em;
+}
+
+/* ===========================
+   Leaderboard Panel (main menu)
+   =========================== */
+
+.leaderboard-panel {
+  position: absolute;
+  left: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 270px;
+  background: rgba(10, 14, 39, 0.82);
+  border: 1px solid rgba(127, 255, 127, 0.22);
+  border-radius: 6px;
+  padding: 20px 0 12px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 30px rgba(127,255,127,0.05);
+  z-index: 10;
+  animation: lb-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes lb-slide-in {
+  from { opacity: 0; transform: translateY(-50%) translateX(-24px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.leaderboard-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px 16px;
+  border-bottom: 1px solid rgba(127, 255, 127, 0.12);
+  margin-bottom: 4px;
+}
+
+.lb-icon {
+  width: 16px;
+  height: 16px;
+  color: #ffdd44;
+  filter: drop-shadow(0 0 6px rgba(255,221,68,0.6));
+  flex-shrink: 0;
+}
+
+.leaderboard-title {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--color-accent);
+  text-shadow: 0 0 12px var(--color-accent-glow);
+}
+
+.leaderboard-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.leaderboard-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  transition: background 0.15s ease;
+}
+
+.leaderboard-list li:hover {
+  background: rgba(127, 255, 127, 0.05);
+}
+
+.lb-loading {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-faint);
+  letter-spacing: 0.1em;
+  padding: 16px 20px !important;
+}
+
+.lb-rank {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-text-faint);
+  min-width: 22px;
+  text-align: right;
+  letter-spacing: 0.05em;
+}
+
+.lb-rank.gold   { color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.6); }
+.lb-rank.silver { color: #c0c0c0; text-shadow: 0 0 6px rgba(192,192,192,0.4); }
+.lb-rank.bronze { color: #cd7f32; text-shadow: 0 0 6px rgba(205,127,50,0.4); }
+
+.lb-name {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-name.me {
+  color: var(--color-accent);
+  text-shadow: 0 0 8px var(--color-accent-glow);
+}
+
+.lb-score {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffdd44;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.lb-world {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--color-text-faint);
+  letter-spacing: 0.1em;
+  background: rgba(127,255,127,0.08);
+  padding: 2px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.lb-empty {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-faint);
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 20px !important;
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .leaderboard-panel { display: none; }
+}

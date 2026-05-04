@@ -1,8 +1,6 @@
 /**
  * POST /api/save
  * Upserts a save game record for a player.
- *
- * Body: { playerId, currentWorld, currentLevel, batteries, laserPower, keys, playtime }
  */
 
 import { neon } from '@neondatabase/serverless';
@@ -15,6 +13,9 @@ export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
   try {
+    // Ensure total_score column exists — safe no-op if already present
+    await sql`ALTER TABLE save_games ADD COLUMN IF NOT EXISTS total_score INT DEFAULT 0`;
+
     const {
       playerId,
       currentWorld = 1,
@@ -22,7 +23,8 @@ export default async function handler(req, res) {
       batteries = 0,
       laserPower = 100,
       keys = [],
-      playtime = 0
+      playtime = 0,
+      totalScore = 0
     } = req.body;
 
     if (!playerId) {
@@ -33,22 +35,23 @@ export default async function handler(req, res) {
       INSERT INTO save_games (
         player_id, current_world, current_level,
         batteries_collected, laser_power, keys_obtained,
-        total_playtime_seconds, last_saved
+        total_playtime_seconds, total_score, last_saved
       )
       VALUES (
         ${playerId}, ${currentWorld}, ${currentLevel},
         ${batteries}, ${laserPower}, ${keys},
-        ${playtime}, NOW()
+        ${playtime}, ${totalScore}, NOW()
       )
       ON CONFLICT (player_id)
       DO UPDATE SET
-        current_world = EXCLUDED.current_world,
-        current_level = EXCLUDED.current_level,
-        batteries_collected = EXCLUDED.batteries_collected,
-        laser_power = EXCLUDED.laser_power,
-        keys_obtained = EXCLUDED.keys_obtained,
+        current_world          = EXCLUDED.current_world,
+        current_level          = EXCLUDED.current_level,
+        batteries_collected    = EXCLUDED.batteries_collected,
+        laser_power            = EXCLUDED.laser_power,
+        keys_obtained          = EXCLUDED.keys_obtained,
         total_playtime_seconds = EXCLUDED.total_playtime_seconds,
-        last_saved = NOW()
+        total_score            = GREATEST(save_games.total_score, EXCLUDED.total_score),
+        last_saved             = NOW()
       RETURNING *;
     `;
 

@@ -67,6 +67,20 @@
   <div id="main-menu" class="hidden">
     <div class="menu-bg"></div>
     <div class="menu-stars"></div>
+
+    <!-- Leaderboard panel (left side) -->
+    <div id="leaderboard-panel" class="leaderboard-panel">
+      <div class="leaderboard-header">
+        <svg class="lb-icon" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+        </svg>
+        <span class="leaderboard-title">TOP PILOTS</span>
+      </div>
+      <ol id="leaderboard-list" class="leaderboard-list">
+        <li class="lb-loading">Scanning the galaxy…</li>
+      </ol>
+    </div>
+
     <div class="menu-content">
       <div id="player-badge" class="player-badge">
         <span class="badge-label">PILOT</span>
@@ -90,7 +104,7 @@
           <span class="btn-text">SETTINGS</span>
         </button>
       </div>
-      <p class="menu-version">v0.2.0 • Tech Demo</p>
+      <p class="menu-version">v0.3.0 • World 1 Preview</p>
     </div>
   </div>
 
@@ -180,10 +194,50 @@
           <div class="hud-counter"><span id="battery-count">0</span> <span class="hud-counter-target">/ 10</span></div>
         </div>
       </div>
+      <div class="hud-stat score-stat">
+        <div class="hud-icon score-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+          </svg>
+        </div>
+        <div class="hud-stat-content">
+          <div class="hud-stat-label">SCORE</div>
+          <div class="hud-counter score-counter"><span id="score-count">000000</span></div>
+        </div>
+      </div>
     </div>
+
+    <!-- Enemy counter + boss health — top centre -->
+    <div class="hud-top-center">
+      <div id="enemy-counter" class="hud-enemy-counter">
+        <span id="enemy-count">5</span>
+        <span class="enemy-label">ENEMIES</span>
+      </div>
+      <div id="boss-strip" class="boss-strip hidden">
+        <div class="boss-strip-name" id="boss-name-display">VIRUS</div>
+        <div class="boss-track">
+          <div id="boss-health-fill" class="boss-health-fill"></div>
+        </div>
+        <div class="boss-hp-text" id="boss-hp-text">100%</div>
+      </div>
+    </div>
+
+    <!-- Objective progress — below battery counter -->
+    <div id="objective-strip" class="objective-strip">
+      <div class="objective-label">OBJECTIVE — COLLECT 10 BATTERIES</div>
+      <div class="objective-track">
+        <div id="objective-fill" class="objective-fill"></div>
+      </div>
+    </div>
+
+    <!-- Full-screen damage vignette -->
+    <div id="damage-vignette" class="damage-vignette"></div>
 
     <div class="hud-bottom-center">
       <div id="hud-message" class="hud-message"></div>
+      <div id="controls-hint" class="controls-hint">
+        WASD&nbsp;·&nbsp;Move &nbsp;|&nbsp; Mouse&nbsp;·&nbsp;Aim &nbsp;|&nbsp; Click&nbsp;·&nbsp;Fire &nbsp;|&nbsp; Space&nbsp;·&nbsp;Jump &nbsp;|&nbsp; Esc&nbsp;·&nbsp;Pause
+      </div>
     </div>
 
     <div id="save-indicator" class="save-indicator">
@@ -195,8 +249,7 @@
 
     <div class="hud-world-label">
       <span class="world-label-tag">WORLD <span id="world-num">1</span></span>
-      <span class="world-label-name" id="world-name">TEST ARENA</span>
-      <span class="world-label-level">LVL <span id="level-num">1</span></span>
+      <span class="world-label-name" id="world-name"></span>
     </div>
 
     <div class="hud-crosshair">
@@ -218,6 +271,9 @@
       <button id="btn-quit" class="menu-button"><span class="btn-text">QUIT TO MENU</span></button>
     </div>
   </div>
+
+  <!-- Level transition fade overlay -->
+  <div id="level-transition" class="level-transition"></div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

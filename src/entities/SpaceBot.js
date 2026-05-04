@@ -22,7 +22,8 @@ export class SpaceBot {
     this.scene = scene;
     this.position = new THREE.Vector3(0, 0, 0);
     this.velocity = new THREE.Vector3();
-    this.rotationY = 0;       // facing direction (around Y axis)
+    this.rotationY = 0;       // camera / aim yaw (mouse-controlled)
+    this.facingY   = 0;       // body facing (auto-rotates toward movement)
     this.moveSpeed = 6;
     this.jumpVelocity = 0;
     this.onGround = true;
@@ -229,25 +230,40 @@ export class SpaceBot {
   }
 
   update(dt, input, camera) {
-    // Mouse look - rotates Space Bot's facing
+    // Mouse controls camera yaw (also used for aim direction in Game.js)
     const { dx } = input.consumeMouseDelta();
     if (input.pointerLocked) {
       this.rotationY -= dx * input.getMouseMultiplier();
     }
 
-    // Movement input (relative to facing direction)
-    const moveDir = new THREE.Vector3();
-    if (input.isPressed('KeyW')) moveDir.z -= 1;
-    if (input.isPressed('KeyS')) moveDir.z += 1;
-    if (input.isPressed('KeyA')) moveDir.x -= 1;
-    if (input.isPressed('KeyD')) moveDir.x += 1;
+    // WASD — movement relative to camera yaw
+    const rawMove = new THREE.Vector3();
+    if (input.isPressed('KeyW')) rawMove.z -= 1;
+    if (input.isPressed('KeyS')) rawMove.z += 1;
+    if (input.isPressed('KeyA')) rawMove.x -= 1;
+    if (input.isPressed('KeyD')) rawMove.x += 1;
 
-    if (moveDir.lengthSq() > 0) {
-      moveDir.normalize();
-      // Apply rotation
-      moveDir.applyEuler(new THREE.Euler(0, this.rotationY, 0));
-      moveDir.multiplyScalar(this.moveSpeed * dt);
-      this.position.add(moveDir);
+    let isMoving = false;
+    if (rawMove.lengthSq() > 0) {
+      isMoving = true;
+      rawMove.normalize();
+      // World-space direction from camera yaw
+      const worldMove = rawMove.clone().applyEuler(new THREE.Euler(0, this.rotationY, 0));
+
+      // Smoothly rotate body to face movement direction (full 360° turns work)
+      const targetFacing = Math.atan2(worldMove.x, worldMove.z);
+      let delta = targetFacing - this.facingY;
+      while (delta >  Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+      this.facingY += delta * Math.min(1, 12 * dt);
+
+      this.position.add(worldMove.multiplyScalar(this.moveSpeed * dt));
+    } else {
+      // Idle: body faces AWAY from camera (π offset keeps back toward camera)
+      let delta = (this.rotationY + Math.PI) - this.facingY;
+      while (delta >  Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+      this.facingY += delta * Math.min(1, 2.5 * dt);
     }
 
     // Jump
@@ -256,10 +272,10 @@ export class SpaceBot {
       this.onGround = false;
     }
 
-    // Gravity & ground check
+    // Gravity & ground
     if (!this.onGround) {
       this.position.y += this.jumpVelocity * dt;
-      this.jumpVelocity -= 20 * dt; // gravity
+      this.jumpVelocity -= 20 * dt;
       if (this.position.y <= 0) {
         this.position.y = 0;
         this.jumpVelocity = 0;
@@ -267,34 +283,28 @@ export class SpaceBot {
       }
     }
 
-    // Apply transform
+    // Body uses facingY; camera in Game.js uses rotationY
     this.group.position.copy(this.position);
-    this.group.rotation.y = this.rotationY;
+    this.group.rotation.y = this.facingY;
 
-    // Subtle bobbing animation when moving
-    const isMoving = moveDir.lengthSq() > 0;
+    // Walking animation
     if (isMoving && this.onGround) {
       const bob = Math.sin(performance.now() * 0.012) * 0.08;
       this.group.position.y = this.position.y + bob;
-
-      // Walking animation - swing arms and legs
       const swing = Math.sin(performance.now() * 0.012) * 0.4;
-      this.leftArm.rotation.x = swing;
+      this.leftArm.rotation.x  =  swing;
       this.rightArm.rotation.x = -swing;
-      this.leftLeg.rotation.x = -swing * 0.8;
-      this.rightLeg.rotation.x = swing * 0.8;
+      this.leftLeg.rotation.x  = -swing * 0.8;
+      this.rightLeg.rotation.x =  swing * 0.8;
     } else {
-      // Return to rest
-      this.leftArm.rotation.x *= 0.85;
+      this.leftArm.rotation.x  *= 0.85;
       this.rightArm.rotation.x *= 0.85;
-      this.leftLeg.rotation.x *= 0.85;
+      this.leftLeg.rotation.x  *= 0.85;
       this.rightLeg.rotation.x *= 0.85;
     }
 
-    // Antenna ball pulses
     if (this.antennaBall) {
-      const pulse = 1 + Math.sin(performance.now() * 0.005) * 0.1;
-      this.antennaBall.scale.setScalar(pulse);
+      this.antennaBall.scale.setScalar(1 + Math.sin(performance.now() * 0.005) * 0.1);
     }
   }
 
@@ -302,8 +312,14 @@ export class SpaceBot {
     return elapsed - this.lastFireTime > this.fireRate;
   }
 
-  fire(elapsed) {
+  fire(elapsed, aimDir) {
     this.lastFireTime = elapsed;
+
+    // aimDir comes from Game._getAimDirection() (screen-centre raycast).
+    // Fall back to horizontal forward if not supplied.
+    const forward = aimDir
+      ? aimDir.clone().normalize()
+      : new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, this.facingY, 0));
 
     // Create laser projectile
     const geom = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
@@ -315,9 +331,6 @@ export class SpaceBot {
     const mesh = new THREE.Mesh(geom, mat);
 
     // Spawn at chest height in front of Space Bot
-    const forward = new THREE.Vector3(0, 0, -1);
-    forward.applyEuler(new THREE.Euler(0, this.rotationY, 0));
-
     mesh.position.copy(this.position);
     mesh.position.y += 1.2;
     mesh.position.add(forward.clone().multiplyScalar(0.8));

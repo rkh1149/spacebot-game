@@ -8,9 +8,12 @@
 import * as THREE from 'three';
 
 export class Enemy {
-  constructor(scene, { shiny = false } = {}) {
+  constructor(scene, { shiny = false, bodyColor = null, emissiveColor = null, lightColor = null } = {}) {
     this.scene = scene;
     this.shiny = shiny;
+    this._bodyColor    = bodyColor;
+    this._emissiveColor = emissiveColor;
+    this._lightColor   = lightColor;
     this.position = new THREE.Vector3();
     this.health = shiny ? 50 : 75;
     this.alive = true;
@@ -23,8 +26,8 @@ export class Enemy {
   }
 
   _build() {
-    const baseColor = this.shiny ? 0xffaa44 : 0x8a3a3a;
-    const emissive = this.shiny ? 0xff8822 : 0x000000;
+    const baseColor = this._bodyColor    ?? (this.shiny ? 0xffaa44 : 0x8a3a3a);
+    const emissive  = this._emissiveColor ?? (this.shiny ? 0xff8822 : 0x000000);
     const emissiveIntensity = this.shiny ? 1.5 : 0;
 
     const bodyMat = new THREE.MeshStandardMaterial({
@@ -72,7 +75,8 @@ export class Enemy {
 
     // Hover effect for shiny enemies (extra glow light)
     if (this.shiny) {
-      const light = new THREE.PointLight(0xffaa44, 1.5, 6);
+      const lc = this._lightColor ?? 0xffaa44;
+      const light = new THREE.PointLight(lc, 1.5, 6);
       this.group.add(light);
       this.shinyLight = light;
     }

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS save_games (
   laser_power INT DEFAULT 100,
   keys_obtained TEXT[] DEFAULT '{}',
   total_playtime_seconds INT DEFAULT 0,
+  total_score INT DEFAULT 0,
   last_saved TIMESTAMP DEFAULT NOW(),
   UNIQUE(player_id)
 );

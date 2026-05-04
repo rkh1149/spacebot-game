@@ -77,7 +77,8 @@ export class ApiClient {
       batteries: state.batteries || 0,
       laserPower: Math.round(state.laserPower || 100),
       keys: state.keys || [],
-      playtime: Math.round(state.playtime || 0)
+      playtime: Math.round(state.playtime || 0),
+      totalScore: Math.round(state.totalScore || 0),
     };
 
     // Always backup to localStorage first
@@ -157,6 +158,21 @@ export class ApiClient {
       playtime: apiSave.total_playtime_seconds,
       savedAt: apiSave.last_saved
     };
+  }
+
+  /**
+   * Fetch top-10 leaderboard. Returns array or null on failure.
+   */
+  async leaderboard() {
+    try {
+      const res = await fetch(`${API_BASE}/api/leaderboard`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return data.leaderboard || [];
+    } catch (err) {
+      console.warn('[API] Leaderboard fetch failed:', err.message);
+      return null;
+    }
   }
 
   /**
